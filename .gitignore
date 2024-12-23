@@ -1,2 +1,9 @@
 *.log
 Julia_DSS/
+*.py
+DSSE_algorithms/
+.idea/
+.vscode/
+4Bus_DSS/
+*.txt
+__pycache__/
