@@ -1176,58 +1176,6 @@ Volt_Ang_frame.to_excel(r'C:\Users\rdutta24\SURI_Project\OpenPy-DSSE\openpy_dsse
 # Volt_Ang_frame.loc[6:8,['V_Actual','V_Estimated']]=Volt_Ang_frame.loc[6:8,['V_Actual','V_Estimated']]/(baseKV/8.67)
 ###  Rough ####
  
-def get_bus_volt_angle(self):
-    bus_name = self.Circuit.AllBusNames()
-    volt_bus = []
-    angle_bus = []
-
-    for bus in bus_name:
-        self.Circuit.SetActiveBus(bus)
-        volt_angle = self.Bus.VMagAngle()
-        volt_bus.extend(volt_angle[0::2])
-        angle_bus.extend(volt_angle[1::2])
-
-    volt_bus = jnp.array(volt_bus)
-    angle_bus = jnp.radians(jnp.array(angle_bus))
-
-    return volt_bus, angle_bus
-
-# Example usage
-volt_bus, angle_bus = get_bus_volt_angle(dss)
-print(1)
 
 
 
-
-# Rough Code Snippets
-Voltage=Voltage[Voltage!=0]
-
-# e=jnp.array([0,1]).reshape(2,1)
-# Y2=jnp.matmul(e,jnp.matmul(e.T,Y_matrix[3:5,3:5]))
-# PP=(Y2+jnp.transpose(jnp.conjugate(Y2)))/2
-# Vnode=polar(Voltage,Angle)
-# v2=Vnode[3:5].reshape(2,1)
-# P_2_a=jnp.matmul(PP,jnp.matmul(v2,jnp.transpose(jnp.conjugate(v2))))
-
-# a = [node_complex_power_injection(node_name, Vnode, Y_mat_sp, Y_order) for node_name in Y_order]
-# a=jnp.array(a)
-
-def PQ_i_ph(Volt,Ang,Y):
-    P=jnp.zeros((n_buses-1,num_phases))
-    Q=jnp.zeros((n_buses-1,num_phases))
-    for i in range(1,n_buses):
-        for ph in range(num_phases):
-            P = P.at[i-1, ph].set(P_i_ph(Volt, Ang, i, ph, Y))
-            Q = Q.at[i-1, ph].set(Q_i_ph(Volt, Ang, i, ph, Y))
-    PQ=jnp.concatenate((P,Q),0)
-    return PQ
-
-
-
-solver = GradientDescent(fun=combined_loss_func, stepsize=0.01)
-
-# Run the optimization
-sol = solver.run(initial_guess)
-
-# Extract optimal Vsp and theta from the solution
-optimal_params = sol.params
