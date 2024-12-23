@@ -1,0 +1,16 @@
+
+
+New Loadshape.Load_Shape_15min npts= 96 minterval=15 mult=(File = Load_Shape_15min.csv)
+
+New Loadshape.Irradiance_Shape_15min npts= 96 minterval=15 mult=(File = Irradiance_Shape_15min.csv)
+
+New Load.load_80587960_2 bus1 = S80587960.2 phases = 1 kV = 7.29 model  = 1 kW = 98.62 kVar = 42.01 status = variable daily = Load_Shape_15min
+
+New PVSystem.PV_80587960_2 bus1 = S80587960.2 phases = 1 kV = 7.29 irrad  = 0.96 kVA = 29.586 Pmpp = 26.62 temperature=25 PF=1 Daily = Irradiance_Shape_15min
+
+Set MaxIter = 20
+Set MaxControlIter = 200
+set mode =daily
+set hour = 0
+set number = 96 stepsize= 15m
+Solve
