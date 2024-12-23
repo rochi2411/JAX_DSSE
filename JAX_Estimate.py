@@ -1223,13 +1223,6 @@ def PQ_i_ph(Volt,Ang,Y):
     return PQ
 
 
-for i in node2:
-    if(Angle[i]==0.0):
-        Angle=Angle.at[i].set(jnp.deg2rad(-120))
-for i in node3:
-    if(Angle[i]==0.0):
-        Angle=Angle.at[i].set(jnp.deg2rad(120))
-
 
 solver = GradientDescent(fun=combined_loss_func, stepsize=0.01)
 
