@@ -2,6 +2,7 @@ import pandas as pd
 from functools import partial
 from opendss_wrapper import OpenDSS
 import py_dss_interface
+import os
 import datetime as dt
 import scipy
 import numpy as np
@@ -13,13 +14,15 @@ from jax import grad,jit,vmap,lax
 import ctypes
 
 #13 bus data
-DSS_file_path=r"examples\13NodeIEEE\OpenDSS files\Master13NodeIEEE.dss"
+DSS_file_path=os.path.join(os.getcwd(), "examples", "13NodeIEEE", "OpenDSS files", "Master13NodeIEEE.dss")
 
 # 37 bus data
-#DSS_file_path=r"examples\37NodeIEEE\OpenDSS files\Master_ieee37.DSS"
+#DSS_file_path=os.path.join(os.getcwd(), "examples", "37NodeIEEE", "OpenDSS files", "Master_ieee37.DSS")
+
 
 # 123 bus data
-# DSS_file_path=r"examples\123Bus\IEEE123Master.dss"
+# DSS_file_path=os.path.join(os.getcwd(), "examples", "123Bus", "IEEE123Master.dss")
+
 
 dss = py_dss_interface.DSSDLL()
 dss.text(f"compile [{DSS_file_path}]")
@@ -65,8 +68,8 @@ Y_matrix = Y_original[np.ix_(index_map, index_map)] # Final sorted Y matrix
 n_buses =  len(buses)
 n_nodes = len(nodes)
 n_lines = len(lines)
-n_vi=24  # no. of voltage measurements
-n_pQi=22 # no. of power injection measurements
+n_vi=8  # no. of voltage measurements
+n_pQi=8 # no. of power injection measurements
 Bus_Nodes=[]
 
 for i in range(n_buses):
@@ -1089,7 +1092,7 @@ def gradient_descent(initial_params,learning_rate, num_iterations,n,n_bus,w,ind,
         params=params - learning_rate * grads * 1e-7 # Update the parameters
         return params # Update the parameters
     
-    optimal_params = lax.fori_loop(0, num_iterations, body_fn, initial_params*1e6)
+    optimal_params = lax.fori_loop(0, num_iterations, body_fn, initial_params*adjust_param)
     return optimal_params/adjust_param
 
 start=time.time()

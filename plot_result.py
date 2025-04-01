@@ -16,9 +16,6 @@ plt.title('Nodes vs Voltage',fontsize=16)
 plt.legend(fontsize=14)
 plt.xticks(ticks=range(0, len(volt_ang_frame['Nodes']), 20),fontsize=13)
 plt.yticks(fontsize=13)
-# Show the plot for Voltage
-plt.show()
-
 
 # Create a figure with 3 subplots
 fig, axs = plt.subplots(3, 1, figsize=(10, 18))
@@ -61,16 +58,4 @@ plt.tight_layout(pad=5.0)
 
 # Show the plot
 plt.show()
-# # Plotting "Nodes vs Ang_Actual" and "Nodes vs Ang_Estimated"
-# plt.figure(figsize=(10, 6))
-# plt.plot(volt_ang_frame['Nodes'], volt_ang_frame['Ang_Actual'], label='Actual', linestyle='solid', color='blue')
-# plt.plot(volt_ang_frame['Nodes'], volt_ang_frame['Ang_Estimated'], label='Estimated', linestyle='dashed', color='red')
 
-# # Add labels, title, and legend for Angle
-# plt.xlabel('Nodes')
-# plt.ylabel('Angle (Radians)')
-# plt.title('Nodes vs Angle')
-# plt.legend()
-# plt.xticks(ticks=range(0, len(volt_ang_frame['Nodes']), 6))
-# # Show the plot for Angle
-# plt.show()
