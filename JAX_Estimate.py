@@ -5,25 +5,21 @@ import py_dss_interface
 import datetime as dt
 import scipy
 import numpy as np
-from jaxopt import GradientDescent
+#from jaxopt import GradientDescent
 import jax.numpy as jnp
 import time
-from jax import jacobian,grad,jit,vmap,lax
-from jax.scipy.optimize import minimize
-import matplotlib.pyplot as plt
+from jax import grad,jit,vmap,lax
+#from jax.scipy.optimize import minimize
 import ctypes
 
-# 4 Bus data
-#DSS_file_path = r"C:\Users\rdutta24\SURI_Project\openpy_dsse\NEW_DSSE\4Bus_DSS\Master_4node.dss"
-
-# 13 bus data
-#DSS_file_path=r"C:\Users\rdutta24\SURI_Project\OpenPy-DSSE\openpy_dsse\examples\13NodeIEEE\OpenDSS files\Master13NodeIEEE.dss"
+#13 bus data
+DSS_file_path=r"examples\13NodeIEEE\OpenDSS files\Master13NodeIEEE.dss"
 
 # 37 bus data
-#DSS_file_path=r"C:\Users\rdutta24\SURI_Project\OpenPy-DSSE\openpy_dsse\examples\37NodeIEEE\OpenDSS files\Master_ieee37.DSS"
+#DSS_file_path=r"examples\37NodeIEEE\OpenDSS files\Master_ieee37.DSS"
 
 # 123 bus data
-DSS_file_path=r"C:\Users\rdutta24\SURI_Project\OpenPy-DSSE\openpy_dsse\examples\123Bus\IEEE123Master.dss"
+# DSS_file_path=r"examples\123Bus\IEEE123Master.dss"
 
 dss = py_dss_interface.DSSDLL()
 dss.text(f"compile [{DSS_file_path}]")
@@ -276,8 +272,8 @@ def element_PQij_PU(df_element_power: pd.DataFrame) -> pd.DataFrame:
     :param df_element_power: It comes from the function: element_powers_PQij
     :return: df_element_power
     """
-    # Note: 1. For 4 bus system, sbase = 40.33 MVA
-    Sbas_1ph = 1#40.33 # MVA
+
+    Sbas_1ph = 1 #40.33 # MVA
 
     for k in range(len(df_element_power)):
         if df_element_power.at[k, 'from_bus'] != '' and df_element_power.at[k, 'to_bus'] == '':
@@ -298,9 +294,6 @@ def element_PQij_PU(df_element_power: pd.DataFrame) -> pd.DataFrame:
             df_element_power.at[k, 'Q2(kvar)'] = ((df_element_power.at[k, 'Q2(kvar)']) * 1) / (Sbas_1ph)
             df_element_power.at[k, 'Q3(kvar)'] = ((df_element_power.at[k, 'Q3(kvar)']) * 1) / (Sbas_1ph)
 
-    # df_element_power = df_element_power.rename(
-    #     columns={'P1(kW)': 'P1(pu)', 'P2(kW)': 'P2(pu)', 'P3(kW)': 'P3(pu)',
-    #                 'Q1(kvar)': 'Q1(pu)', 'Q2(kvar)': 'Q2(pu)', 'Q3(kvar)': 'Q3(pu)'})
 
     return df_element_power
 
@@ -965,34 +958,6 @@ def flatten_indices(i, ph, offset=0):
     return i * num_phases + ph + offset
 
 # Power injection equations
-# @jit
-# def P_i_ph(V, delta, i, ph, Y):
-#     P = 0.0
-#     for l in range(num_phases):
-#         for j in range(n_buses):
-#             V_i_ph = V[flatten_indices(i, ph)]
-#             V_j_l = V[flatten_indices(j, l)]
-#             delta_i_ph = delta[flatten_indices(i, ph)]
-#             delta_j_l = delta[flatten_indices(j, l)]
-#             G_ij_ph_l = Y.real[flatten_indices(i, ph), flatten_indices(j, l)]
-#             B_ij_ph_l = Y.imag[flatten_indices(i, ph), flatten_indices(j, l)]
-#             P += V_i_ph * V_j_l * (G_ij_ph_l * jnp.cos(delta_i_ph - delta_j_l) + B_ij_ph_l * jnp.sin(delta_i_ph - delta_j_l))*1e3
-#     return P
-
-# @jit
-# def Q_i_ph(V, delta, i, ph, Y):
-#     Q = 0.0
-#     for l in range(num_phases):
-#         for j in range(n_buses):
-#             V_i_ph = V[flatten_indices(i, ph)]
-#             V_j_l = V[flatten_indices(j, l)]
-#             delta_i_ph = delta[flatten_indices(i, ph)]
-#             delta_j_l = delta[flatten_indices(j, l)]
-#             G_ij_ph_l = Y.real[flatten_indices(i, ph), flatten_indices(j, l)]
-#             B_ij_ph_l = Y.imag[flatten_indices(i, ph), flatten_indices(j, l)]
-#             Q += V_i_ph * V_j_l * (G_ij_ph_l * jnp.sin(delta_i_ph - delta_j_l) - B_ij_ph_l * jnp.cos(delta_i_ph - delta_j_l))*1e3
-#     return Q
-
 @partial(jit,static_argnums=(5,))
 def P_i_ph(V, delta, ii, ph, Y,n_bus):
     V_i_ph = V[flatten_indices(ii, ph)]
@@ -1027,20 +992,6 @@ def Q_i_ph(V, delta, ii, ph, Y, n_bus):
     Q = jnp.sum(V_i_ph * V_j_l * (G_ij_ph_l * jnp.sin(delta_i_ph - delta_j_l) - B_ij_ph_l * jnp.cos(delta_i_ph - delta_j_l))) * 1e3
     return Q
 
-# @partial(jit,static_argnums=(3,))
-# def PQ_i_ph(Volt, Ang, Y, n_bus): # don't take global variables
-#     def calc_PQ(i):
-#         P_vals = vmap(lambda ph: (P_i_ph(Volt, Ang, i, ph, Y, n_bus)))(jnp.arange(3))
-#         Q_vals = vmap(lambda ph: (Q_i_ph(Volt, Ang, i, ph, Y, n_bus)))(jnp.arange(3)) # no. of phase = 3
-#         return P_vals, Q_vals
-
-#     P_list, Q_list = zip(*(calc_PQ(i) for i in range(1, n_bus)))
-
-#     P = jnp.stack(P_list)
-#     Q = jnp.stack(Q_list)
-
-#     PQ = jnp.concatenate((P, Q), axis=0)
-#     return PQ
 
 # Optimized Combined PQ Calculation
 @partial(jit, static_argnums=(3,4))
@@ -1088,14 +1039,6 @@ def Z_est(Vsp, theta,Y,nvi, ind, n_bus):
 
     return zest
 
-# @jit
-# def gradient(Volt,Ang):
-#     dPQ_dV = jit(jacobian(lambda V, theta: PQ_i_ph(V,theta), argnums=0))(Volt, Ang)
-#     dPQ_dtheta = jit(jacobian(lambda V, theta: PQ_i_ph(V,theta), argnums=1))(Volt, Ang)
-#     dPQ_dV=dPQ_dV.reshape((n_buses-1)*3*2,(n_buses*num_phases))
-#     dPQ_dtheta=dPQ_dtheta.reshape((n_buses-1)*3*2,(n_buses*num_phases))
-
-#     return dPQ_dV,dPQ_dtheta
 
 total_meas=(n_vi*3)+(6*n_pQi)
 rii=jnp.ones(total_meas)*0.01
@@ -1118,33 +1061,40 @@ def combined_loss_func(V_ang,n,n_bus,w,ind,Y):
     return loss_func(Vsp, theta,Y,w,ind, n_bus)
 
 # IEEE 13 bus initialization
-# Voltage=Voltage.at[Voltage!=0].set(2.401777)
-# Voltage=Voltage.at[6:9].set(0.277)
+Voltage=Voltage.at[Voltage!=0].set(2.401777)
+Voltage=Voltage.at[6:9].set(0.277)
 
 # IEEE 37 bus initialization
 # Voltage=Voltage.at[Voltage!=0].set(2.7)
 # Voltage=Voltage.at[6:9].set(0.27)
 
 # IEEE 123 bus initialization
-Voltage=Voltage.at[Voltage!=0].set(2.40177)
-Voltage=Voltage.at[-3:].set(0.277)
+# Voltage=Voltage.at[Voltage!=0].set(2.40177)
+# Voltage=Voltage.at[-3:].set(0.277)
 initial_guess = jnp.concatenate([Voltage,Angle])  
 loss_grad=grad(combined_loss_func, argnums=0)
+
+# Note: 1.The step size alpha = 1e-4 for 10% error in measurement
+#       2. Step size = 1e-5 for 1% error in measurement
+#       3. For 123 bus, adjustment parameter= 1e6 and step size= 1e-6
+#       4. For 13 and 37 bus, adjustment parameter = 1e3 and step size = 1e-4
+
+adjust_param=1e3
+step_size=1e-4
 
 @partial(jit,static_argnums=(1,2,3,4))
 def gradient_descent(initial_params,learning_rate, num_iterations,n,n_bus,w,ind,Y):
     def body_fn(i, params):
-        grads = loss_grad(params/1e6,n,n_bus,w,ind,Y)  # Compute the gradient
+        grads = loss_grad(params/adjust_param,n,n_bus,w,ind,Y)  # Compute the gradient
         params=params - learning_rate * grads * 1e-7 # Update the parameters
         return params # Update the parameters
     
     optimal_params = lax.fori_loop(0, num_iterations, body_fn, initial_params*1e6)
-    return optimal_params/1e6
+    return optimal_params/adjust_param
 
 start=time.time()
-result= gradient_descent(initial_guess,1e-6,100,n_bus_phase,n_buses,weights,indx,Y_expand)     
+result= gradient_descent(initial_guess,step_size,100,n_bus_phase,n_buses,weights,indx,Y_expand)     
 end=time.time() 
-#result = minimize(combined_loss_func,initial_guess, method='BFGS')  #scipy optimize
 final_time=end-start
 result=result[result!=0]
 Vest=result[:n_nodes]
@@ -1163,18 +1113,11 @@ V_cal=Vest.tolist()
 A_cal=Aest.tolist()
 A_act=A_actual.tolist()
 Volt_Ang_frame=pd.DataFrame({'Nodes':nodes,'V_Actual':V_act,'V_Estimated':V_cal,'Ang_Actual':A_act,'Ang_Estimated':A_cal})
-Volt_Ang_frame.to_excel(r'C:\Users\rdutta24\SURI_Project\OpenPy-DSSE\openpy_dsse\volt_ang_frame.xlsx', index=False)
+Volt_Ang_frame.to_excel('volt_ang_frame.xlsx', index=False)
 
 
-# Note: 1.The step size alpha = 1e-4 for 10% error in measurement
-#       2. Step size = 1e-5 for 1% error in measurement
-#       3. For 123 bus, adjustment parameter= 1e6 and step size= 1e-6
-#       4. For 13 and 37 bus, adjustment parameter = 1e3 and step size = 1e-4
 
-# Volt_Ang_frame.loc[:5,['V_Actual','V_Estimated']]=Volt_Ang_frame.loc[:5,['V_Actual','V_Estimated']]/baseKV
-# Volt_Ang_frame.loc[9:,['V_Actual','V_Estimated']]=Volt_Ang_frame.loc[9:,['V_Actual','V_Estimated']]/baseKV
-# Volt_Ang_frame.loc[6:8,['V_Actual','V_Estimated']]=Volt_Ang_frame.loc[6:8,['V_Actual','V_Estimated']]/(baseKV/8.67)
-###  Rough ####
+
  
 
 
