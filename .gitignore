@@ -5,5 +5,4 @@ DSSE_algorithms/
 .idea/
 .vscode/
 4Bus_DSS/
-*.txt
 __pycache__/
