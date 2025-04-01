@@ -1,4 +1,0 @@
-!TRANSFORMER DEFINITION 
-New Transformer.XFM1  Phases=3   Windings=2  XHL=2
-~ wdg=1 bus=1	conn=wye kv=4.16    kva=500    %r=.55     XHT=1
-~ wdg=2 bus=4   conn=wye kv=0.48    kva=500    %r=.55     XLT=1
