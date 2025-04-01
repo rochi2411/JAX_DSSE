@@ -51,7 +51,7 @@ This repository implements a novel DSSE approach that combines:
 ```bash
 conda create -n dss_env python=3.11
 conda activate dss_env
-pip install -r requirements.txt
+pip install -r requirement.txt
 ```
 
 ---
