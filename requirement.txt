@@ -1,6 +1,14 @@
-numpy
-pandas
-py_dss_interface
-jax
-matplotlib
-functools
+jax==0.4.30
+jaxlib==0.4.30
+jaxopt==0.8.3
+opendssdirect.py==0.9.4
+py-dss-interface==1.0.2
+dss-python==0.15.7
+dss-python-backend==0.14.5
+numpy>=1.22,<2.0  # JAX requires NumPy 1.22-1.26
+pandas==2.2.2
+matplotlib==3.9.0
+scipy==1.14.0
+networkx==3.3
+openpyxl==3.1.4
+cffi==1.17.1
