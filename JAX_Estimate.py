@@ -2,34 +2,66 @@ import pandas as pd
 from functools import partial
 from opendss_wrapper import OpenDSS
 import py_dss_interface
-import os
+import argparse
+from pathlib import Path
 import datetime as dt
 import scipy
 import numpy as np
-#from jaxopt import GradientDescent
 import jax.numpy as jnp
 import time
 from jax import grad,jit,vmap,lax
-#from jax.scipy.optimize import minimize
 import ctypes
 
-#13 bus data
-DSS_file_path=os.path.join(os.getcwd(), "examples", "13NodeIEEE", "OpenDSS files", "Master13NodeIEEE.dss")
 
-# 37 bus data
-#DSS_file_path=os.path.join(os.getcwd(), "examples", "37NodeIEEE", "OpenDSS files", "Master_ieee37.DSS")
+def parse_arguments():
+    parser = argparse.ArgumentParser(description='Distribution System State Estimation using JAX')
+    parser.add_argument('--case', type=int, choices=[13, 37, 123], default=13,
+                       help='Test case (13, 37, or 123 bus system)')
+    parser.add_argument('--iter', type=int, default=100,
+                       help='Maximum iterations')
+    return parser.parse_args()
 
-
-# 123 bus data
-# DSS_file_path=os.path.join(os.getcwd(), "examples", "123Bus", "IEEE123Master.dss")
-
+args = parse_arguments()
+script_dir = Path(__file__).parent  
+    # Configure case-specific parameters
+if args.case == 13:
+    DSS_file_path = script_dir / "examples" / "13NodeIEEE" / "OpenDSS files" / "Master13NodeIEEE.dss"
+    DSS_file_path = str(DSS_file_path.resolve())
+    n_vi = 8  # no. of voltage measurements
+    n_pQi = 8  # no. of power injection measurements
+    voltage_init = 2.401777
+    voltage_low_init = 0.277
+    voltage_low_indices = slice(6, 9)
+    adjust_param = 1e3
+    step_size = 1e-4
+    
+elif args.case == 37:
+    DSS_file_path = script_dir / "examples" / "37NodeIEEE" / "OpenDSS files" / "Master_ieee37.DSS"
+    DSS_file_path = str(DSS_file_path.resolve())
+    n_vi = 24  # adjust based on 37-bus measurements
+    n_pQi = 22  # adjust based on 37-bus measurements
+    voltage_init = 2.7
+    voltage_low_init = 0.27
+    voltage_low_indices = slice(6, 9)
+    adjust_param = 1e3
+    step_size = 1e-4
+    
+elif args.case == 123:
+    DSS_file_path = script_dir / "examples" / "123Bus" / "IEEE123Master.dss" 
+    DSS_file_path = str(DSS_file_path.resolve())
+    n_vi = 80  # adjust based on 123-bus measurements
+    n_pQi = 80  # adjust based on 123-bus measurements
+    voltage_init = 2.40177
+    voltage_low_init = 0.277
+    voltage_low_indices = slice(-3, None)
+    adjust_param = 1e6
+    step_size = 1e-6
 
 dss = py_dss_interface.DSSDLL()
 dss.text(f"compile [{DSS_file_path}]")
 
 system = OpenDSS(DSS_file_path, dt.timedelta(minutes=1), dt.datetime(2022, 1, 1))
 dss.solution_solve()
-
 
 def Ymatrix_noPU_dss(Y_size):
     Y_list = dss.circuit_system_y()
@@ -52,7 +84,6 @@ element=['vsources', 'transformers', 'lines', 'loads', 'capacitors']
 
 Y_order = dss.circuit_y_node_order()
 Y_order=[node.lower() for node in Y_order]
-#Y_mat_sp = scipy.sparse.csr_matrix(Y)
 Y_mat_sp=Ymatrix_noPU_dss(len(Y_order))
 
 Y_original = Y_mat_sp.toarray()
@@ -946,12 +977,6 @@ def Z_meas_pu(self,nvi,npQi):
 
     return zmeas,indices
 
-# def polar(r,theta):
-#     real_part = r * jnp.cos(theta)
-#     imaginary_part = r * jnp.sin(theta)
-#     complex_number = real_part + 1j*imaginary_part
-#     return complex_number
-
 num_phases=3
 
 Y_expand=expand_ybus_general(Y_matrix,nodes,expand_nodes) # (n_buses X n_phases) order
@@ -1042,7 +1067,6 @@ def Z_est(Vsp, theta,Y,nvi, ind, n_bus):
 
     return zest
 
-
 total_meas=(n_vi*3)+(6*n_pQi)
 rii=jnp.ones(total_meas)*0.01
 weights=jnp.diag(1/rii)
@@ -1063,27 +1087,12 @@ def combined_loss_func(V_ang,n,n_bus,w,ind,Y):
     theta = V_ang[n:]
     return loss_func(Vsp, theta,Y,w,ind, n_bus)
 
-# IEEE 13 bus initialization
-Voltage=Voltage.at[Voltage!=0].set(2.401777)
-Voltage=Voltage.at[6:9].set(0.277)
+# IEEE bus initialization
+Voltage=Voltage.at[Voltage!=0].set(voltage_init)
+Voltage=Voltage.at[voltage_low_indices].set(voltage_low_init)
 
-# IEEE 37 bus initialization
-# Voltage=Voltage.at[Voltage!=0].set(2.7)
-# Voltage=Voltage.at[6:9].set(0.27)
-
-# IEEE 123 bus initialization
-# Voltage=Voltage.at[Voltage!=0].set(2.40177)
-# Voltage=Voltage.at[-3:].set(0.277)
 initial_guess = jnp.concatenate([Voltage,Angle])  
 loss_grad=grad(combined_loss_func, argnums=0)
-
-# Note: 1.The step size alpha = 1e-4 for 10% error in measurement
-#       2. Step size = 1e-5 for 1% error in measurement
-#       3. For 123 bus, adjustment parameter= 1e6 and step size= 1e-6
-#       4. For 13 and 37 bus, adjustment parameter = 1e3 and step size = 1e-4
-
-adjust_param=1e3
-step_size=1e-4
 
 @partial(jit,static_argnums=(1,2,3,4))
 def gradient_descent(initial_params,learning_rate, num_iterations,n,n_bus,w,ind,Y):
@@ -1096,7 +1105,7 @@ def gradient_descent(initial_params,learning_rate, num_iterations,n,n_bus,w,ind,
     return optimal_params/adjust_param
 
 start=time.time()
-result= gradient_descent(initial_guess,step_size,100,n_bus_phase,n_buses,weights,indx,Y_expand)     
+result= gradient_descent(initial_guess,step_size,args.iter,n_bus_phase,n_buses,weights,indx,Y_expand)     
 end=time.time() 
 final_time=end-start
 result=result[result!=0]
@@ -1110,13 +1119,13 @@ V_actual=V_actual[V_actual!=0]
 Ang=Angi()
 A_actual=jnp.array(Ang[['Ang1(deg)', 'Ang2(deg)', 'Ang3(deg)']])
 A_actual=A_actual[A_actual!=0]
-#A_actual=jnp.deg2rad(A_actual)
 V_act=V_actual.tolist()
 V_cal=Vest.tolist()
 A_cal=Aest.tolist()
 A_act=A_actual.tolist()
 Volt_Ang_frame=pd.DataFrame({'Nodes':nodes,'V_Actual':V_act,'V_Estimated':V_cal,'Ang_Actual':A_act,'Ang_Estimated':A_cal})
-Volt_Ang_frame.to_excel('volt_ang_frame.xlsx', index=False)
+result_path=script_dir / "volt_ang_frame.xlsx"
+Volt_Ang_frame.to_excel(str(result_path.resolve()), index=False)
 
 
 
