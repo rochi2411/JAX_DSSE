@@ -1,0 +1,6 @@
+numpy
+pandas
+py_dss_interface
+jax
+matplotlib
+functools
